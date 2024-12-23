@@ -36,7 +36,7 @@ jobs:
       uses: Swatinem/rust-cache@v2
 
     - name: Run cargo
-      run: cargo build --release --path helix-term --locked
+      run: cargo build --release --locked --target x86_64-pc-windows-msvc
 
     - name: Attest build provenance
       uses: actions/attest-build-provenance@v1
@@ -46,7 +46,7 @@ jobs:
     - name: Upload build artifact
       uses: actions/upload-artifact@v4
       with:
-        name: zed
+        name: helix
         path: target\release\hx.exe
 
     - name: Set date
