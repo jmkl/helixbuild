@@ -66,7 +66,7 @@ jobs:
         tag_name: nightly
         prerelease: true
         files: |
-          target/release/Zed.exe
+          target/release/hx.exe
 
     - name: Release Nightly
       uses: softprops/action-gh-release@v2
@@ -77,4 +77,4 @@ jobs:
         tag_name: "nightly-${{ steps.set-date.outputs.CURRENT_DATE }}"
         prerelease: true
         files: |
-          target/release/Zed.exe
+          target/release/hx.exe
