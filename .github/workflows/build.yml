@@ -35,6 +35,14 @@ jobs:
     - name: Rust Cache
       uses: Swatinem/rust-cache@v2
 
+    - name: Get latest commit
+      shell: pwsh
+      id: commit_message
+      run: |
+        $GIT_MESSAGE = git log -1 --pretty
+        echo "GIT_MESSAGE=$GIT_MESSAGE" >> $env:GITHUB_ENV
+        echo "GIT_MESSAGE=$GIT_MESSAGE" >> $env:GITHUB_OUTPUT
+    
     - name: Run cargo
       run: cargo build --release --locked --target x86_64-pc-windows-msvc
 
@@ -61,20 +69,9 @@ jobs:
       uses: softprops/action-gh-release@v2
       if: startsWith(github.ref, 'refs/heads/main') || startsWith(github.ref, 'refs/heads/auto-release')
       with:
-        name: Nightly - Current
-        body: This release always contains the newest nightly artifacts.
+        name: Nightly Build
+        body: "${{ steps.commit_message.outputs.GIT_MESSAGE }}"
         tag_name: nightly
-        prerelease: true
-        files: |
-          target/x86_64-pc-windows-msvc/release/hx.exe
-
-    - name: Release Nightly
-      uses: softprops/action-gh-release@v2
-      if: startsWith(github.ref, 'refs/heads/main') || startsWith(github.ref, 'refs/heads/auto-release')
-      with:
-        name: Nightly ${{ steps.set-date.outputs.CURRENT_DATE }}
-        body: Automated nightly release of Zed
-        tag_name: "nightly-${{ steps.set-date.outputs.CURRENT_DATE }}"
         prerelease: true
         files: |
           target/x86_64-pc-windows-msvc/release/hx.exe
