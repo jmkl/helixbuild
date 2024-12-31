@@ -16,7 +16,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        repository: omentic/helix-ex
+        repository: omentic/helix-ext
       
     - name: Set git config for long paths
       run: git config --system core.longpaths true
