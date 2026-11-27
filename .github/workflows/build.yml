@@ -1,10 +1,12 @@
-name: Build Helix
+
+name: Build Helix Steel
+
 on:
   workflow_dispatch:
   schedule:
     - cron: "0 2 * * *"
 
-permissions: 
+permissions:
   contents: write
   id-token: write
   attestations: write
@@ -12,66 +14,65 @@ permissions:
 jobs:
   build:
     runs-on: windows-latest
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        repository: helix-editor/helix
-      
-    - name: Set git config for long paths
-      run: git config --system core.longpaths true
-      
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@stable
+      - name: Checkout Steel Helix
+        uses: actions/checkout@v4
+        with:
+          repository: mattwparas/helix
+          ref: steel-event-system
+          fetch-depth: 1
 
-    - name: Add WASM target
-      run: rustup target add wasm32-wasi
+      - name: Set git config for long paths
+        run: git config --system core.longpaths true
 
-    - name: Install C++ build tools
-      uses: ilammy/msvc-dev-cmd@v1
-      with:
-        arch: x64
-        
-    - name: Rust Cache
-      uses: Swatinem/rust-cache@v2
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
 
-    - name: Get latest commit
-      shell: pwsh
-      id: commit_message
-      run: |
-        $GIT_MESSAGE = git log -1 --pretty
-        echo "GIT_MESSAGE=$GIT_MESSAGE" >> $env:GITHUB_ENV
-        echo "GIT_MESSAGE=$GIT_MESSAGE" >> $env:GITHUB_OUTPUT
-    
-    - name: Run cargo
-      run: cargo build --release --locked --target x86_64-pc-windows-msvc
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
 
-    - name: Attest build provenance
-      uses: actions/attest-build-provenance@v1
-      with:
-        subject-path: 'target\x86_64-pc-windows-msvc\release\hx.exe'
+      - name: Get commit information
+        id: commit
+        shell: pwsh
+        run: |
+          $HASH = git rev-parse --short HEAD
+          $MESSAGE = git log -1 --format=%s
+          "HASH=$HASH" >> $env:GITHUB_OUTPUT
+          "MESSAGE=$MESSAGE" >> $env:GITHUB_OUTPUT
 
-    - name: Upload build artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: helix
-        path: target\x86_64-pc-windows-msvc\release\hx.exe
+      - name: Build Helix with Steel
+        run: cargo build --release --locked -p helix-term --features steel,git --bin hx
 
-    - name: Set date
-      id: set-date
-      shell: pwsh
-      run: |
-        $CURRENT_DATE = Get-Date -UFormat "%Y.%m.%d"
-        echo "CURRENT_DATE=$CURRENT_DATE" >> $env:GITHUB_ENV
-        echo "CURRENT_DATE=$CURRENT_DATE" >> $env:GITHUB_OUTPUT
-        
-    - name: Update Nightly Current
-      uses: softprops/action-gh-release@v2
-      if: startsWith(github.ref, 'refs/heads/main') || startsWith(github.ref, 'refs/heads/auto-release')
-      with:
-        name: Nightly Build
-        body: "${{ steps.commit_message.outputs.GIT_MESSAGE }}"
-        tag_name: nightly
-        prerelease: true
-        files: |
-          target/x86_64-pc-windows-msvc/release/hx.exe
+      - name: Prepare release
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist
+          Copy-Item target/release/hx.exe dist/hx.exe
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: dist/hx.exe
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: helix-steel-windows-${{ steps.commit.outputs.HASH }}
+          path: dist/hx.exe
+
+      - name: Update Nightly Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Helix Steel Nightly
+          body: |
+            Automated Windows build of mattwparas/helix.
+
+            Branch: steel-event-system
+            Commit: ${{ steps.commit.outputs.HASH }}
+            Message: ${{ steps.commit.outputs.MESSAGE }}
+
+          tag_name: nightly
+          prerelease: true
+          make_latest: false
+          files: dist/hx.exe
